@@ -35,8 +35,8 @@ class TransactionAdmin(admin.ModelAdmin):
                 return
 
             if obj.sender.user != obj.receiver.user:
-                obj.commission = obj.transfer_amount * Decimal(0.10)
+                obj.comission = obj.transfer_amount * Decimal(0.10)
             else:
-                obj.commission = Decimal(0.00)
+                obj.comission = Decimal(0.00)
 
         super().save_model(request, obj, form, change)

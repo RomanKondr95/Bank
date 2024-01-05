@@ -5,6 +5,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.forms import ValidationError
 from django.core.validators import MinValueValidator
+from django.db import transaction
 
 
 class Wallets(models.Model):
@@ -35,7 +36,7 @@ class Wallets(models.Model):
         unique_name = "".join(secrets.choice(characters) for _ in range(8))
         return unique_name
 
-    def save(self, *args, **kwargs):
+    def save(self, from_transaction=False, *args, **kwargs):
         user_wallets_count = Wallets.objects.filter(user=self.user).count()
         if not self.name:
             self.name = self.generate_unique_name()
@@ -44,7 +45,7 @@ class Wallets(models.Model):
                 self.balance = 3
             elif self.currency == self.RUB:
                 self.balance = 100
-        if user_wallets_count >= 5:
+        if not from_transaction and user_wallets_count >= 5:
             raise ValidationError("User cannot create more than 5 wallets")
         super().save(*args, **kwargs)
 
@@ -64,11 +65,35 @@ class Transactions(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        if self.sender.currency != self.sender.currency:
-            self.status = 'FAILED'
-            raise ValidationError("Transaction allowed only for wallets with the same currency!")
+        self.validate_currency()
+        self.calculate_comission()
+
+        self.validate_transfer()
+
+        with transaction.atomic():
+            self.process_transaction()
+        super().save(*args, **kwargs)
+
+    def validate_currency(self):
+        if self.sender.currency != self.receiver.currency:
+            self.status = "FAILED"
+            raise ValidationError(
+                "Transaction allowed only for wallets with the same currency!"
+            )
+
+    def calculate_comission(self):
         if self.sender.user != self.receiver.user:
             self.comission = self.transfer_amount * Decimal(0.10)
         else:
-            self.commission = Decimal(0.00)
-        super().save(*args, **kwargs)
+            self.comission = Decimal(0.00)
+
+    def validate_transfer(self):
+        if self.sender.balance < self.transfer_amount + self.comission:
+            self.status = "FAILED"
+            raise ValidationError("Insufficient funds for the transaction!")
+
+    def process_transaction(self):
+        self.sender.balance -= self.transfer_amount + self.comission
+        self.receiver.balance += self.transfer_amount
+        self.sender.save(from_transaction=True)
+        self.receiver.save(from_transaction=True)
