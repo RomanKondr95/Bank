@@ -12,8 +12,8 @@ class Wallets(models.Model):
     VISA = "Visa"
     MASTERCARD = "Mastercard"
     TYPE_CHOICES = [
-        (VISA, "Visa"),
-        (MASTERCARD, "Mastercard"),
+        (VISA, "visa"),
+        (MASTERCARD, "mastercard"),
     ]
     USD = "USD"
     EUR = "EUR"
@@ -36,15 +36,18 @@ class Wallets(models.Model):
         unique_name = "".join(secrets.choice(characters) for _ in range(8))
         return unique_name
 
+    def calculate_initial_balance(self):
+        if self.currency in [self.USD, self.EUR]:
+            self.balance = 3
+        elif self.currency == self.RUB:
+            self.balance = 100
+
     def save(self, from_transaction=False, *args, **kwargs):
         user_wallets_count = Wallets.objects.filter(user=self.user).count()
         if not self.name:
             self.name = self.generate_unique_name()
         if not self.balance:
-            if self.currency in [self.USD, self.EUR]:
-                self.balance = 3
-            elif self.currency == self.RUB:
-                self.balance = 100
+            self.calculate_initial_balance()
         if not from_transaction and user_wallets_count >= 5:
             raise ValidationError("User cannot create more than 5 wallets")
         super().save(*args, **kwargs)
