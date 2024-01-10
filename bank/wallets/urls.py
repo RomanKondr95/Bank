@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path
 from .views import (
     WalletsDetailView,
     WalletsListView,
@@ -9,7 +9,6 @@ from .views import (
 
 # вот это нужно будет уточнить у ментора. Видимо очень важен порядок маршрутов. По какому принципу? Я рассставлял методом проб и ошибок
 urlpatterns = [
-    path("auth/", include("rest_framework.urls")),
     path(
         "wallets/transactions/",
         UserTransactionsView.as_view(),

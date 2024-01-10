@@ -11,16 +11,15 @@ from .serializers import (
     WalletSerializer,
     TransactionSerializer,
 )
-from rest_framework.authentication import SessionAuthentication
-from django.db.models import Q
+
+from django.db.models import Q, QuerySet
 from .services import WalletService, TransactionService
 
 
 class WalletsListView(ListCreateAPIView):
     serializer_class = WalletSerializer
-    authentication_classes = [SessionAuthentication]
 
-    def get_queryset(self) -> list[Wallets]:
+    def get_queryset(self) -> QuerySet[Wallets]:
         return WalletService.get_user_wallets(self.request.user)
 
     def perform_create(self, serializer: WalletSerializer):
@@ -40,7 +39,7 @@ class WalletsDetailView(RetrieveDestroyAPIView):
 class UserTransactionsView(ListCreateAPIView):
     serializer_class = TransactionCreateSerializer
 
-    def get_queryset(self) -> list[Transactions]:
+    def get_queryset(self) -> QuerySet[Transactions]:
         return TransactionService.get_user_transactions(self.request.user)
 
     def get_serializer_class(
@@ -59,7 +58,7 @@ class UserTransactionsView(ListCreateAPIView):
 class WalletTransactionsView(ListAPIView):
     serializer_class = TransactionSerializer
 
-    def get_queryset(self) -> list[Transactions]:
+    def get_queryset(self) -> QuerySet[Transactions]:
         wallet_name = self.kwargs["wallet_name"]
         return Transactions.objects.filter(
             Q(sender__name=wallet_name) | Q(receiver__name=wallet_name)
