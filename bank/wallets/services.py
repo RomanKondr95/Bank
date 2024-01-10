@@ -1,9 +1,10 @@
 from decimal import Decimal
 import secrets
 import string
+from typing import Union
 
 from django.forms import ValidationError
-from .models import Wallets, Transactions, User
+from .models import Wallets, Transactions
 from django.db import transaction as tr
 from django.db.models import Q
 
@@ -14,29 +15,42 @@ class WalletService:
 
     """
 
+    # метод для админки кошельков
     @staticmethod
-    def get_user_wallets(user):
+    def save_wallet(wallet: Wallets, is_change):
+        if not is_change:
+            if not wallet.balance:
+                wallet.balance = WalletService.calculate_initial_balance(
+                    wallet.currency
+                )
+            if not wallet.name:
+                wallet.name = WalletService.generate_unique_name()
+
+        wallet.save()
+
+    @staticmethod
+    def get_user_wallets(user) -> list[Wallets]:
         return Wallets.objects.filter(user=user)
 
     @staticmethod
-    def get_all_wallets():
+    def get_all_wallets() -> list[Wallets]:
         return Wallets.objects.all()
 
     @staticmethod
-    def generate_unique_name():
+    def generate_unique_name() -> str:
         characters = string.ascii_uppercase + string.digits
         unique_name = "".join(secrets.choice(characters) for _ in range(8))
         return unique_name
 
     @staticmethod
-    def calculate_initial_balance(currency):
+    def calculate_initial_balance(currency: str) -> Decimal:
         if currency in [Wallets.USD, Wallets.EUR]:
             return Decimal(3)
         elif currency == Wallets.RUB:
             return Decimal(100)
 
     @staticmethod
-    def create_wallet(wallet_type, currency, user):
+    def create_wallet(wallet_type: str, currency: str, user):
         wallet_type = Wallets.VISA if type == "Visa" else Wallets.MASTERCARD
         unique_name = WalletService.generate_unique_name()
         user_wallets_count = Wallets.objects.filter(user=user).count()
@@ -60,20 +74,36 @@ class TransactionService:
 
     """
 
+    # метод для админки транзакций
     @staticmethod
-    def get_wallet_transactions(wallet_name):
+    def save_transaction(transaction: Transactions, is_change):
+        if not is_change:
+            if transaction.sender.currency != transaction.receiver.currency:
+                transaction.status = "FAILED"
+                transaction.save()
+                return
+
+            if transaction.sender.user != transaction.receiver.user:
+                transaction.comission = transaction.transfer_amount * Decimal(0.10)
+            else:
+                transaction.comission = Decimal(0.00)
+
+        transaction.save()
+
+    @staticmethod
+    def get_wallet_transactions(wallet_name: str) -> list[Transactions]:
         return Transactions.objects.filter(
             Q(sender__name=wallet_name) | Q(receiver__name=wallet_name)
         )
 
     @staticmethod
-    def get_user_transactions(user):
+    def get_user_transactions(user) -> list[Transactions]:
         return Transactions.objects.filter(
             Q(sender__user=user) | Q(receiver__user=user)
         )
 
     @staticmethod
-    def validate_currency(transaction):
+    def validate_currency(transaction: Transactions):
         if transaction.sender.currency != transaction.receiver.currency:
             transaction.status = "FAILED"
             raise ValidationError(
@@ -81,14 +111,14 @@ class TransactionService:
             )
 
     @staticmethod
-    def calculate_comission(transaction):
+    def calculate_comission(transaction: Transactions):
         if transaction.sender.user != transaction.receiver.user:
             transaction.comission = transaction.transfer_amount * Decimal(0.10)
         else:
             transaction.comission = Decimal(0.00)
 
     @staticmethod
-    def validate_transfer(transaction):
+    def validate_transfer(transaction: Transactions):
         if (
             transaction.sender.balance
             < transaction.transfer_amount + transaction.comission
@@ -106,7 +136,9 @@ class TransactionService:
         transaction.receiver.save()
 
     @staticmethod
-    def create_transaction(sender_name, receiver_name, transfer_amount):
+    def create_transaction(
+        sender_name: str, receiver_name: str, transfer_amount: Decimal
+    ) -> Union[Transactions, None]:
         sender_wallet = Wallets.objects.get(name=sender_name)
         receiver_wallet = Wallets.objects.get(name=receiver_name)
 
