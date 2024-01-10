@@ -21,18 +21,22 @@ from rest_framework import status
 from django.db.models import Q
 
 from wallets import serializers
+from .services import WalletService, TransactionService
 
 
 class WalletsListView(ListCreateAPIView):
-    queryset = Wallets.objects.all()
     serializer_class = WalletSerializer
     authentication_classes = [SessionAuthentication]
 
     def get_queryset(self):
-        return Wallets.objects.filter(user=self.request.user)
+        return WalletService.get_user_wallets(self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        WalletService.create_wallet(
+            serializer.validated_data["type"],
+            serializer.validated_data["currency"],
+            self.request.user,
+        )
 
 
 class WalletsDetailView(RetrieveDestroyAPIView):
@@ -45,10 +49,7 @@ class UserTransactionsView(ListCreateAPIView):
     serializer_class = TransactionCreateSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        return Transactions.objects.filter(
-            Q(sender__user=user) | Q(receiver__user=user)
-        )
+        return TransactionService.get_user_transactions(self.request.user)
 
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -57,16 +58,8 @@ class UserTransactionsView(ListCreateAPIView):
             return TransactionCreateSerializer
         return TransactionSerializer
 
-    # def post(self, request, *args, **kwargs):
-    #     serializer = self.get_serializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     self.perform_create(serializer)
-    #     headers = self.get_success_headers(serializer.data)
-    #     return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    # def perform_create(self, serializer):
-    #     serializer.save()
-
+    def perform_create(self, serializer):
+        serializer.save()
 
 
 class WalletTransactionsView(ListAPIView):
@@ -83,20 +76,3 @@ class TransactionDetailView(RetrieveAPIView):
     queryset = Transactions.objects.all()
     serializer_class = TransactionSerializer
     lookup_field = "id"
-
-
-# class TransactionCreateView(ListCreateAPIView):
-#     queryset = Transactions.objects.all()
-#     serializer_class = TransactionSerializer
-
-#     def perform_create(self, serializer):
-#         serializer.save(user=self.request.user)
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_create(serializer)
-#         headers = self.get_success_headers(serializer.data)
-#         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-#     def perform_create(self, serializer):
-#         serializer.save()

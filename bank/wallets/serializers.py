@@ -1,6 +1,7 @@
 import logging
 from rest_framework import serializers
 from .models import Wallets, Transactions
+from .services import WalletService, TransactionService
 
 
 class WalletSerializer(serializers.ModelSerializer):
@@ -8,14 +9,13 @@ class WalletSerializer(serializers.ModelSerializer):
     balance = serializers.SerializerMethodField()
 
     def get_name(self, obj):
-        if obj.name:
-            return obj.name
-        return Wallets.generate_unique_name()
+        if isinstance(obj, dict):
+            return obj.get("name", WalletService.generate_unique_name())
+        return obj.name if obj.name else WalletService.generate_unique_name()
 
     def get_balance(self, obj):
-        if obj.balance:
-            return obj.balance
-        return Wallets.calculate_initial_balance(obj)
+        wallet_currency = obj.get("currency") if isinstance(obj, dict) else obj.currency
+        return str(WalletService.calculate_initial_balance(wallet_currency))
 
     class Meta:
         model = Wallets
@@ -39,45 +39,23 @@ class TransactionSerializer(serializers.ModelSerializer):
         ]
 
 
-# class TransactionCreateSerializer(serializers.ModelSerializer):
-#     sender = serializers.CharField(source="sender.name")
-#     receiver = serializers.CharField(source="receiver.name")
-    
-
-#     class Meta:
-#         model = Transactions
-#         fields = [
-#             "sender",
-#             "receiver",
-#             "transfer_amount",
-#         ]
-        
 class TransactionCreateSerializer(serializers.ModelSerializer):
-    sender = serializers.CharField(source="sender.name")
-    receiver = serializers.CharField(source="receiver.name")
+    sender = serializers.CharField()
+    receiver = serializers.CharField()
+    transfer_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         model = Transactions
-        fields = [
-            "sender",
-            "receiver",
-            "transfer_amount",
-        ]
+        fields = ["sender", "receiver", "transfer_amount"]
 
-    def create(self, validated_data):
-        sender_name = validated_data["sender"]
-        receiver_name = validated_data["receiver"]
+    def save(self, **kwargs):
+        sender_name = self.validated_data["sender"]
+        receiver_name = self.validated_data["receiver"]
 
-
-        sender_wallet, _ = Wallets.objects.get_or_create(user=self.context['request'].user,name=sender_name)
-        receiver_wallet, _ = Wallets.objects.get_or_create(user=self.context['request'].user,name=receiver_name)
-
-
-        transaction = Transactions.objects.create(
-            sender=sender_wallet,
-            receiver=receiver_wallet,
-            transfer_amount=validated_data["transfer_amount"],
-            status="PAID"
+        transaction = TransactionService.create_transaction(
+            sender_name=sender_name,
+            receiver_name=receiver_name,
+            transfer_amount=self.validated_data["transfer_amount"],
         )
 
         return transaction
