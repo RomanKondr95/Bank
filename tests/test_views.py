@@ -1,8 +1,6 @@
-from decimal import Decimal
 import pytest
 from django.urls import reverse
 from .snapshots_utils import snapshot_check
-from wallets.models import Wallets
 
 
 @pytest.mark.django_db
