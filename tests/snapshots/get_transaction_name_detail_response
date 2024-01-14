@@ -1,0 +1,11 @@
+[
+  {
+    "id": 2,
+    "sender": "AW2J6U5F",
+    "receiver": "BWX2J7U5",
+    "transfer_amount": "2.00",
+    "comission": "0.00",
+    "status": "PAID",
+    "timestamp": "2024-01-14T18:26:09.464925+03:00"
+  }
+]

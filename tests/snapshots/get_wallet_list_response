@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "AW2J6U5F",
+    "balance": "100",
+    "type": "MasterCard",
+    "currency": "RUB",
+    "created_on": "2024-01-14T18:26:09.398927+03:00",
+    "modified_on": "2024-01-14T18:26:09.398927+03:00"
+  },
+  {
+    "id": 2,
+    "name": "BWX2J7U5",
+    "balance": "100",
+    "type": "Visa",
+    "currency": "RUB",
+    "created_on": "2024-01-14T18:26:09.399933+03:00",
+    "modified_on": "2024-01-14T18:26:09.399933+03:00"
+  }
+]

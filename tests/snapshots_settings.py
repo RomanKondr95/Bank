@@ -1,0 +1,3 @@
+SNAPSHOTS_DIR = "tests/snapshots/"
+ALLOW_SNAPSHOT_DELETION = False
+SNAPSHOT_UPDATE = True
