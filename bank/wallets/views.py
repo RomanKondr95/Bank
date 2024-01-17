@@ -14,10 +14,14 @@ from .serializers import (
 
 from django.db.models import Q, QuerySet
 from .services import WalletService, TransactionService
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 
 class WalletsListView(ListCreateAPIView):
     serializer_class = WalletSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["currency"]
 
     def get_queryset(self) -> QuerySet[Wallets]:
         return WalletService.get_user_wallets(self.request.user)
@@ -38,6 +42,9 @@ class WalletsDetailView(RetrieveDestroyAPIView):
 
 class UserTransactionsView(ListCreateAPIView):
     serializer_class = TransactionCreateSerializer
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["transfer_amount"]
+    ordering_fields = ["comission"]
 
     def get_queryset(self) -> QuerySet[Transactions]:
         return TransactionService.get_user_transactions(self.request.user)
